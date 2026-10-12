@@ -1,0 +1,36 @@
+name: Build and Deploy React App
+on:
+  push:
+    branches:
+      - main
+env:
+  IMAGE_NAME: weatherapi
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 4. Logga in mot Azure
+      - name: Login to Azure
+        uses: azure/login@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: List web apps
+        run: az webapp list --output table
+      # 5. Konfigurera App Service att använda Docker-imagen
+      - name: Configure App Service
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az webapp config container set \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --docker-custom-image-name ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:1.0 \
+              --docker-registry-server-url https://index.docker.io/v1/
+      # 6. Starta om App Service
+      - name: Restart App Service
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az webapp restart \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
